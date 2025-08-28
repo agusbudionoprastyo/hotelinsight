@@ -1,0 +1,52 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/dafm5634/public_html/hotelinsight/
+    - export DEPLOYPATH_PUBLIC=/home/dafm5634/public_html/hotelinsight/public/
+    
+    # Backup database (optional)
+    - /bin/cp $DEPLOYPATH/.env $DEPLOYPATH/.env.backup.$(date +%Y%m%d_%H%M%S)
+    
+    # Copy files to deployment path
+    - /bin/cp -r app/ $DEPLOYPATH/
+    - /bin/cp -r bootstrap/ $DEPLOYPATH/
+    - /bin/cp -r config/ $DEPLOYPATH/
+    - /bin/cp -r database/ $DEPLOYPATH/
+    - /bin/cp -r lang/ $DEPLOYPATH/ 2>/dev/null || true
+    - /bin/cp -r resources/ $DEPLOYPATH/
+    - /bin/cp -r routes/ $DEPLOYPATH/
+    - /bin/cp -r storage/ $DEPLOYPATH/
+    - /bin/cp -r vendor/ $DEPLOYPATH/ 2>/dev/null || true
+    - /bin/cp artisan $DEPLOYPATH/
+    - /bin/cp composer.json $DEPLOYPATH/
+    - /bin/cp composer.lock $DEPLOYPATH/ 2>/dev/null || true
+    
+    # Copy public files
+    - /bin/cp -r public/* $DEPLOYPATH_PUBLIC/
+    
+    # Set permissions
+    - /bin/chmod -R 755 $DEPLOYPATH/storage
+    - /bin/chmod -R 755 $DEPLOYPATH/bootstrap/cache
+    - /bin/chmod 644 $DEPLOYPATH/.env
+    - /bin/chmod 755 $DEPLOYPATH/artisan
+    
+    # Clear cache
+    - cd $DEPLOYPATH && php artisan config:clear
+    - cd $DEPLOYPATH && php artisan cache:clear
+    - cd $DEPLOYPATH && php artisan view:clear
+    - cd $DEPLOYPATH && php artisan route:clear
+    
+    # Run migrations (if needed)
+    - cd $DEPLOYPATH && php artisan migrate --force
+    
+    # Run seeders (if needed)
+    - cd $DEPLOYPATH && php artisan db:seed --force
+    
+    # Create .htaccess in root (if needed)
+    - echo "RewriteEngine On" > $DEPLOYPATH/.htaccess
+    - echo "RewriteRule ^(.*)$ public/\$1 [L]" >> $DEPLOYPATH/.htaccess
+    
+    # Success message
+    - echo "Deployment completed successfully!"
+    - echo "Application deployed to: $DEPLOYPATH"
+    - echo "Public URL: https://hotelinsight.dafam.cloud"
