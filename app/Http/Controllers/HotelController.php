@@ -156,4 +156,37 @@ class HotelController extends Controller
             ], 500);
         }
     }
+
+    public function ensureHotelByPlaceId(string $placeId)
+    {
+        try {
+            $details = $this->googlePlacesService->getHotelDetails($placeId);
+            if (!$details) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hotel details not found'
+                ], 404);
+            }
+
+            $hotel = Hotel::updateOrCreate(
+                ['place_id' => $placeId],
+                [
+                    'name' => $details['name'] ?? 'Unknown',
+                    'location' => $details['address'] ?? '',
+                    'rating' => $details['rating'] ?? 0,
+                    'description' => 'Imported from Google Places API'
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'hotel_id' => $hotel->id
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error ensuring hotel: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

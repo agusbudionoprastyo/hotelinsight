@@ -161,10 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             ${hotel.price_level ? `<span class="text-green-600 font-medium">${'$'.repeat(hotel.price_level)}</span>` : ''}
                         </div>
-                        <a href="/hotels" 
-                           class="mt-3 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm text-center block">
-                            Lihat Semua Hotel
-                        </a>
+                        <button onclick="openHotelDetail('${hotel.place_id}')" 
+                                class="mt-3 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                            Lihat Detail
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -212,6 +212,21 @@ async function getHotelDetails(placeId) {
         }
     } catch (error) {
         alert('Network error: ' + error.message);
+    }
+}
+
+// Redirect helper
+async function openHotelDetail(placeId) {
+    try {
+        const res = await fetch(`/api/hotels/ensure/${placeId}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') } });
+        const data = await res.json();
+        if (data.success) {
+            window.location.href = `/hotels/${data.hotel_id}`;
+        } else {
+            alert(data.message || 'Gagal membuka detail hotel');
+        }
+    } catch (e) {
+        alert('Network error: ' + e.message);
     }
 }
 </script>
