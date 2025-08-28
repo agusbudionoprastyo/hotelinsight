@@ -7,7 +7,7 @@ deployment:
     # Backup database (optional)
     - /bin/cp $DEPLOYPATH/.env $DEPLOYPATH/.env.backup.$(date +%Y%m%d_%H%M%S)
     
-    # Copy files to deployment path
+    # Copy files to deployment path (exclude .env)
     - /bin/cp -r app/ $DEPLOYPATH/
     - /bin/cp -r bootstrap/ $DEPLOYPATH/
     - /bin/cp -r config/ $DEPLOYPATH/
@@ -20,6 +20,28 @@ deployment:
     - /bin/cp artisan $DEPLOYPATH/
     - /bin/cp composer.json $DEPLOYPATH/
     - /bin/cp composer.lock $DEPLOYPATH/ 2>/dev/null || true
+    
+    # Preserve existing .env if exists, otherwise copy from example
+    - if [ ! -f $DEPLOYPATH/.env ]; then /bin/cp .env.example $DEPLOYPATH/.env; fi
+    
+    # Update database configuration if .env exists
+    - if [ -f $DEPLOYPATH/.env ]; then
+        sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=mysql/' $DEPLOYPATH/.env;
+        sed -i 's|DB_DATABASE=.*|DB_DATABASE=dafm5634_hotelinsight|' $DEPLOYPATH/.env;
+        sed -i 's|DB_USERNAME=.*|DB_USERNAME=dafm5634_ag|' $DEPLOYPATH/.env;
+        sed -i 's|DB_PASSWORD=.*|DB_PASSWORD=Ag7us777__|' $DEPLOYPATH/.env;
+        sed -i 's/APP_NAME=.*/APP_NAME="Hotel Insight"/' $DEPLOYPATH/.env;
+        sed -i 's|APP_URL=.*|APP_URL=https://hotelinsight.dafam.cloud|' $DEPLOYPATH/.env;
+        sed -i 's/APP_ENV=.*/APP_ENV=production/' $DEPLOYPATH/.env;
+        sed -i 's/APP_DEBUG=.*/APP_DEBUG=false/' $DEPLOYPATH/.env;
+        sed -i 's/# DB_HOST=127.0.0.1/DB_HOST=localhost/' $DEPLOYPATH/.env;
+        sed -i 's/# DB_PORT=3306/DB_PORT=3306/' $DEPLOYPATH/.env;
+        sed -i 's/# DB_DATABASE=dafm5634_hotelinsight/DB_DATABASE=dafm5634_hotelinsight/' $DEPLOYPATH/.env;
+        sed -i 's/# DB_USERNAME=dafm5634_hotelinsight/DB_USERNAME=dafm5634_ag/' $DEPLOYPATH/.env;
+        sed -i 's/# DB_PASSWORD=your_password_here/DB_PASSWORD=Ag7us777__/' $DEPLOYPATH/.env;
+        echo "DB_CHARSET=utf8mb4" >> $DEPLOYPATH/.env;
+        echo "DB_COLLATION=utf8mb4_unicode_ci" >> $DEPLOYPATH/.env;
+      fi
     
     # Copy public files
     - /bin/cp -r public/* $DEPLOYPATH_PUBLIC/
