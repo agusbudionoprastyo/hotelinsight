@@ -33,7 +33,10 @@ class HotelController extends Controller
     {
         $hotel->load(['prices.otaSource', 'reviews.otaSource']);
         
-        return view('hotels.show', compact('hotel'));
+        // Get paginated reviews
+        $reviews = $hotel->reviews()->with('otaSource')->paginate(10);
+        
+        return view('hotels.show', compact('hotel', 'reviews'));
     }
 
     public function create()

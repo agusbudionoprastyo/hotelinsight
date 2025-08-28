@@ -26,21 +26,21 @@
                 <div class="flex items-start justify-between mb-4">
                     <div>
                         <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ $hotel->name }}</h1>
-                        @if($hotel->city)
+                        @if($hotel->location)
                             <p class="text-gray-600">
                                 <i class="fas fa-map-marker-alt mr-1"></i>
-                                {{ $hotel->address ? $hotel->address . ', ' : '' }}{{ $hotel->city }}{{ $hotel->country ? ', ' . $hotel->country : '' }}
+                                {{ $hotel->location }}
                             </p>
                         @endif
                     </div>
                     
                     <div class="text-right">
-                        @if($hotel->star_rating)
+                        @if($hotel->rating)
                             <div class="flex items-center justify-end mb-2">
                                 @for($i = 1; $i <= 5; $i++)
-                                    <i class="fas fa-star {{ $i <= $hotel->star_rating ? 'text-yellow-400' : 'text-gray-300' }}"></i>
+                                    <i class="fas fa-star {{ $i <= $hotel->rating ? 'text-yellow-400' : 'text-gray-300' }}"></i>
                                 @endfor
-                                <span class="ml-2 text-sm text-gray-600">{{ $hotel->star_rating }} Bintang</span>
+                                <span class="ml-2 text-sm text-gray-600">{{ $hotel->rating }} Bintang</span>
                             </div>
                         @endif
                         
@@ -49,7 +49,7 @@
                                 <i class="fas fa-star {{ $i <= $hotel->average_rating ? 'text-yellow-400' : 'text-gray-300' }} text-sm"></i>
                             @endfor
                             <span class="ml-2 text-sm text-gray-600">
-                                {{ number_format($hotel->average_rating, 1) }} ({{ $hotel->hotelReviews->count() }} review)
+                                {{ number_format($hotel->average_rating, 1) }} ({{ $hotel->reviews->count() }} review)
                             </span>
                         </div>
                     </div>
@@ -61,29 +61,6 @@
                         <p class="text-gray-700">{{ $hotel->description }}</p>
                     </div>
                 @endif
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    @if($hotel->phone)
-                        <div class="flex items-center">
-                            <i class="fas fa-phone text-blue-600 mr-2"></i>
-                            <span class="text-gray-700">{{ $hotel->phone }}</span>
-                        </div>
-                    @endif
-                    
-                    @if($hotel->email)
-                        <div class="flex items-center">
-                            <i class="fas fa-envelope text-blue-600 mr-2"></i>
-                            <span class="text-gray-700">{{ $hotel->email }}</span>
-                        </div>
-                    @endif
-                    
-                    @if($hotel->website)
-                        <div class="flex items-center">
-                            <i class="fas fa-globe text-blue-600 mr-2"></i>
-                            <a href="{{ $hotel->website }}" target="_blank" class="text-blue-600 hover:text-blue-800">{{ $hotel->website }}</a>
-                        </div>
-                    @endif
-                </div>
             </div>
         </div>
     </div>
@@ -131,7 +108,7 @@
     <div class="mt-8 bg-white rounded-lg shadow-md p-6">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">
             <i class="fas fa-comments mr-2 text-blue-600"></i>
-            Review ({{ $hotel->hotelReviews->count() }})
+            Review ({{ $hotel->reviews->count() }})
         </h2>
         
         @if($reviews->count() > 0)
