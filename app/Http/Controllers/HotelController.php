@@ -60,6 +60,18 @@ class HotelController extends Controller
             ->with('success', 'Hotel created successfully!');
     }
 
+    public function searchByPlaceId(Request $request)
+    {
+        $placeId = $request->get('place_id');
+        
+        $hotel = Hotel::where('place_id', $placeId)->first();
+        
+        return response()->json([
+            'success' => true,
+            'hotel' => $hotel
+        ]);
+    }
+
     public function searchFromApi(Request $request)
     {
         $city = $request->get('city', 'Jakarta');

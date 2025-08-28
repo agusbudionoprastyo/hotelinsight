@@ -161,10 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             ${hotel.price_level ? `<span class="text-green-600 font-medium">${'$'.repeat(hotel.price_level)}</span>` : ''}
                         </div>
-                        <button onclick="getHotelDetails('${hotel.place_id}')" 
-                                class="mt-3 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                            Lihat Detail
-                        </button>
+                        <a href="/hotels" 
+                           class="mt-3 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm text-center block">
+                            Lihat Semua Hotel
+                        </a>
                     </div>
                 </div>
             `).join('');
@@ -205,7 +205,8 @@ async function getHotelDetails(placeId) {
         const data = await response.json();
         
         if (data.success) {
-            alert(`Hotel: ${data.data.name}\nRating: ${data.data.rating}\nPhone: ${data.data.phone || 'N/A'}\nWebsite: ${data.data.website || 'N/A'}`);
+            // Redirect to hotels page where user can see all hotels
+            window.location.href = '/hotels';
         } else {
             alert('Error fetching hotel details');
         }
