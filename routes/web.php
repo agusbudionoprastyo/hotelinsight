@@ -5,7 +5,7 @@ use App\Http\Controllers\HotelController;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('home');
 
 Route::resource('hotels', HotelController::class);
 
