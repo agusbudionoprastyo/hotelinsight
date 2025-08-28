@@ -33,10 +33,18 @@ class HotelController extends Controller
     {
         $hotel->load(['prices.otaSource', 'reviews.otaSource']);
         
-        // Get paginated reviews
         $reviews = $hotel->reviews()->with('otaSource')->paginate(10);
         
-        return view('hotels.show', compact('hotel', 'reviews'));
+        $googleDetails = null;
+        if ($hotel->place_id) {
+            try {
+                $googleDetails = $this->googlePlacesService->getHotelDetails($hotel->place_id);
+            } catch (\Exception $e) {
+                $googleDetails = null;
+            }
+        }
+        
+        return view('hotels.show', compact('hotel', 'reviews', 'googleDetails'));
     }
 
     public function create()
