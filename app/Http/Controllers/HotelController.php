@@ -4,42 +4,41 @@ namespace App\Http\Controllers;
 
 use App\Models\Hotel;
 use App\Models\OtaSource;
+use App\Models\HotelPrice;
+use App\Models\HotelReview;
+use App\Services\GooglePlacesService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class HotelController extends Controller
 {
+    protected $googlePlacesService;
+
+    public function __construct(GooglePlacesService $googlePlacesService)
+    {
+        $this->googlePlacesService = $googlePlacesService;
+    }
+
     public function index()
     {
-        $hotels = Hotel::with(['hotelReviews', 'hotelPrices.otaSource'])
-            ->where('is_active', true)
-            ->get()
-            ->map(function ($hotel) {
-                $hotel->average_rating = $hotel->average_rating;
-                $hotel->latest_prices = $hotel->latest_prices;
-                return $hotel;
-            });
+        $hotels = Hotel::with(['latestPrices', 'reviews'])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
+            ->get();
 
         return view('hotels.index', compact('hotels'));
     }
 
     public function show(Hotel $hotel)
     {
-        $hotel->load(['hotelReviews.otaSource', 'hotelPrices.otaSource']);
+        $hotel->load(['prices.otaSource', 'reviews.otaSource']);
         
-        $hotel->average_rating = $hotel->average_rating;
-        $hotel->latest_prices = $hotel->latest_prices;
-        
-        $reviews = $hotel->hotelReviews()
-            ->with('otaSource')
-            ->orderBy('review_date', 'desc')
-            ->paginate(10);
-
-        return view('hotels.show', compact('hotel', 'reviews'));
+        return view('hotels.show', compact('hotel'));
     }
 
     public function create()
     {
-        $otaSources = OtaSource::where('is_active', true)->get();
+        $otaSources = OtaSource::all();
         return view('hotels.create', compact('otaSources'));
     }
 
@@ -47,20 +46,99 @@ class HotelController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'location' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'website' => 'nullable|url|max:255',
-            'star_rating' => 'nullable|integer|min:1|max:5',
-            'image_url' => 'nullable|url|max:255',
+            'rating' => 'nullable|numeric|min:0|max:5',
         ]);
 
         $hotel = Hotel::create($validated);
 
         return redirect()->route('hotels.show', $hotel)
-            ->with('success', 'Hotel berhasil ditambahkan!');
+            ->with('success', 'Hotel created successfully!');
+    }
+
+    public function searchFromApi(Request $request)
+    {
+        $city = $request->get('city', 'Jakarta');
+        $radius = $request->get('radius', 5000);
+
+        try {
+            $hotels = $this->googlePlacesService->searchHotels($city, $radius);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $hotels,
+                'city' => $city,
+                'count' => count($hotels)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching hotels: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getApiDetails(Request $request, $placeId)
+    {
+        try {
+            $hotelDetails = $this->googlePlacesService->getHotelDetails($placeId);
+            
+            if ($hotelDetails) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $hotelDetails
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching hotel details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function importFromGooglePlaces(Request $request)
+    {
+        $city = $request->get('city', 'Jakarta');
+        $radius = $request->get('radius', 5000);
+
+        try {
+            $apiHotels = $this->googlePlacesService->searchHotels($city, $radius);
+            $importedCount = 0;
+
+            foreach ($apiHotels as $apiHotel) {
+                $hotel = Hotel::updateOrCreate(
+                    ['place_id' => $apiHotel['place_id']],
+                    [
+                        'name' => $apiHotel['name'],
+                        'location' => $apiHotel['address'],
+                        'rating' => $apiHotel['rating'],
+                        'description' => 'Imported from Google Places API'
+                    ]
+                );
+
+                if ($hotel->wasRecentlyCreated) {
+                    $importedCount++;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully imported {$importedCount} hotels from Google Places API",
+                'total_found' => count($apiHotels),
+                'imported' => $importedCount
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error importing hotels: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -12,49 +12,38 @@ class Hotel extends Model
 
     protected $fillable = [
         'name',
+        'location',
         'description',
-        'address',
-        'city',
-        'country',
-        'phone',
-        'email',
-        'website',
-        'star_rating',
-        'latitude',
-        'longitude',
-        'image_url',
-        'is_active',
+        'rating',
+        'place_id'
     ];
 
     protected $casts = [
-        'star_rating' => 'integer',
-        'latitude' => 'decimal:8',
-        'longitude' => 'decimal:8',
-        'is_active' => 'boolean',
+        'rating' => 'float',
     ];
 
-    public function hotelPrices(): HasMany
+    public function prices(): HasMany
     {
         return $this->hasMany(HotelPrice::class);
     }
 
-    public function hotelReviews(): HasMany
+    public function reviews(): HasMany
     {
         return $this->hasMany(HotelReview::class);
     }
 
-    public function getAverageRatingAttribute(): float
+    public function latestPrices()
     {
-        return $this->hotelReviews()->avg('rating') ?? 0;
+        return $this->hasMany(HotelPrice::class)->latest();
+    }
+
+    public function getAverageRatingAttribute()
+    {
+        return $this->reviews()->avg('rating') ?? 0;
     }
 
     public function getLatestPricesAttribute()
     {
-        return $this->hotelPrices()
-            ->with('otaSource')
-            ->where('is_available', true)
-            ->orderBy('last_updated', 'desc')
-            ->get()
-            ->groupBy('ota_source_id');
+        return $this->prices()->with('otaSource')->latest()->take(5)->get();
     }
 }

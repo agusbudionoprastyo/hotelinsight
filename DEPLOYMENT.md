@@ -70,6 +70,20 @@ php artisan db:seed --force
 cd /path/to/your/domain
 php artisan migrate --force
 php artisan db:seed --force
+
+# 1. Generate APP_KEY
+php artisan key:generate
+
+# 2. Fix permissions
+chmod -R 755 storage bootstrap/cache
+chmod 644 .env
+
+# 3. Clear cache
+php artisan config:clear
+php artisan view:clear
+
+# 4. Test
+php artisan --version
 ```
 
 ### 7. Test Aplikasi
