@@ -197,4 +197,59 @@ class HotelController extends Controller
             ], 500);
         }
     }
+
+    public function fetchAmadeusPrices(Hotel $hotel)
+    {
+        try {
+            if (!$hotel->latitude || !$hotel->longitude) {
+                if ($hotel->place_id) {
+                    $details = $this->googlePlacesService->getHotelDetails($hotel->place_id);
+                    if (!empty($details['location']['lat']) && !empty($details['location']['lng'])) {
+                        $hotel->latitude = $details['location']['lat'];
+                        $hotel->longitude = $details['location']['lng'];
+                        $hotel->save();
+                    }
+                }
+            }
+
+            if (!$hotel->latitude || !$hotel->longitude) {
+                return back()->with('error', 'Koordinat hotel tidak tersedia');
+            }
+
+            $amadeus = app(\App\Services\AmadeusService::class);
+            $offers = $amadeus->getHotelOffersByGeo((float)$hotel->latitude, (float)$hotel->longitude, 'IDR');
+
+            $imported = 0;
+            foreach ($offers as $offer) {
+                $merchant = $offer['hotel']['name'] ?? 'Amadeus';
+                $ota = \App\Models\OtaSource::firstOrCreate([
+                    'slug' => str( $merchant )->slug('_'),
+                ], [
+                    'name' => $merchant,
+                ]);
+
+                $price = $offer['offers'][0]['price']['total'] ?? null;
+                $currency = $offer['offers'][0]['price']['currency'] ?? 'IDR';
+                if ($price) {
+                    \App\Models\HotelPrice::create([
+                        'hotel_id' => $hotel->id,
+                        'ota_source_id' => $ota->id,
+                        'price' => $price,
+                        'currency' => $currency,
+                        'check_in_date' => now()->addDays(7),
+                        'check_out_date' => now()->addDays(8),
+                        'room_type' => $offer['offers'][0]['room']['typeEstimated']['category'] ?? null,
+                        'booking_url' => $offer['offers'][0]['self'] ?? null,
+                        'is_available' => true,
+                        'last_updated' => now(),
+                    ]);
+                    $imported++;
+                }
+            }
+
+            return back()->with('success', "Harga Amadeus tersimpan: $imported item");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengambil harga Amadeus: ' . $e->getMessage());
+        }
+    }
 }

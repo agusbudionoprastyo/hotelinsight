@@ -8,6 +8,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::resource('hotels', HotelController::class);
+Route::post('/hotels/{hotel}/amadeus-prices', [HotelController::class, 'fetchAmadeusPrices'])->name('hotels.fetchAmadeus');
 
 // Google Places API Routes
 Route::get('/api/hotels/search', [HotelController::class, 'searchFromApi'])->name('api.hotels.search');

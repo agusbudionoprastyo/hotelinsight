@@ -35,4 +35,10 @@ return [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY'),
     ],
 
+    'amadeus' => [
+        'client_id' => env('AMADEUS_CLIENT_ID'),
+        'client_secret' => env('AMADEUS_CLIENT_SECRET'),
+        'env' => env('AMADEUS_ENV', 'test'),
+    ],
+
 ];

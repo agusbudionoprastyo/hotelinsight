@@ -61,6 +61,14 @@
                         <p class="text-gray-700">{{ $hotel->description }}</p>
                     </div>
                 @endif
+                <div class="mt-4">
+                    <form method="POST" action="{{ route('hotels.fetchAmadeus', $hotel) }}">
+                        @csrf
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i class="fas fa-sync mr-1"></i>Ambil Harga dari Amadeus
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
