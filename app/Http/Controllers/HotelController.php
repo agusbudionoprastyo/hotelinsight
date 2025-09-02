@@ -20,13 +20,13 @@ class HotelController extends Controller
         $this->serpApiService = $serpApiService;
     }
     
-    public function index(): View
+    public function index()
     {
         $hotels = Hotel::with(['latestPrices', 'reviews'])->latest()->paginate(10);
         return view('hotels.index', compact('hotels'));
     }
     
-    public function show(Hotel $hotel): View
+    public function show(Hotel $hotel)
     {
         $hotel->load(['prices.otaSource', 'reviews.otaSource']);
         $aggregatedData = $this->hotelDataAggregator->getAggregatedHotelData($hotel);
@@ -34,12 +34,12 @@ class HotelController extends Controller
         return view('hotels.show', compact('hotel', 'aggregatedData'));
     }
     
-    public function create(): View
+    public function create()
     {
         return view('hotels.create');
     }
     
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -56,7 +56,7 @@ class HotelController extends Controller
         ]);
     }
     
-    public function fetchOtaData(Request $request, Hotel $hotel): JsonResponse
+    public function fetchOtaData(Request $request, Hotel $hotel)
     {
         $validated = $request->validate([
             'check_in' => 'required|date|after:today',
@@ -84,7 +84,7 @@ class HotelController extends Controller
         }
     }
     
-    public function searchHotels(Request $request): JsonResponse
+    public function searchHotels(Request $request)
     {
         $validated = $request->validate([
             'query' => 'required|string|min:3',
@@ -93,15 +93,15 @@ class HotelController extends Controller
         
         try {
             $query = $validated['query'];
-            $location = $validated['location'] ?? 'Indonesia';
+            $location = isset($validated['location']) ? $validated['location'] : 'Indonesia';
             
             $searchQuery = "{$query} hotel {$location}";
             
             $response = $this->serpApiService->searchHotelPrices(
                 $query,
                 $location,
-                now()->addDays(1)->format('Y-m-d'),
-                now()->addDays(2)->format('Y-m-d')
+                date('Y-m-d', strtotime('+1 day')),
+                date('Y-m-d', strtotime('+2 days'))
             );
             
             return response()->json([
@@ -117,7 +117,7 @@ class HotelController extends Controller
         }
     }
     
-    public function getHotelPrices(Hotel $hotel, Request $request): JsonResponse
+    public function getHotelPrices(Hotel $hotel, Request $request)
     {
         $validated = $request->validate([
             'check_in' => 'required|date|after:today',
@@ -167,7 +167,7 @@ class HotelController extends Controller
         }
     }
     
-    public function getHotelReviews(Hotel $hotel): JsonResponse
+    public function getHotelReviews(Hotel $hotel)
     {
         try {
             $reviews = $hotel->reviews()
@@ -193,7 +193,7 @@ class HotelController extends Controller
                             'review_url' => $review->review_url,
                         ];
                     }),
-                    'average_rating' => $otaReviews->avg('rating') ?? 0,
+                    'average_rating' => $otaReviews->avg('rating') ?: 0,
                     'total_reviews' => $otaReviews->count(),
                 ];
             }

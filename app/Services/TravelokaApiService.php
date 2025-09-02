@@ -9,7 +9,7 @@ class TravelokaApiService
 {
     protected $baseUrl = 'https://www.traveloka.com/api/v1';
     
-    public function searchHotels(string $location, string $checkIn, string $checkOut, int $guests = 1)
+    public function searchHotels($location, $checkIn, $checkOut, $guests = 1)
     {
         try {
             $response = Http::timeout(30)->get($this->baseUrl . '/hotel/search', [
@@ -23,19 +23,23 @@ class TravelokaApiService
                 return $response->json();
             }
             
-            Log::warning('Traveloka API request failed', [
-                'status' => $response->status(),
-                'response' => $response->body()
-            ]);
+            if (class_exists('Log')) {
+                Log::warning('Traveloka API request failed', [
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+            }
             
             return null;
         } catch (\Exception $e) {
-            Log::error('Traveloka API error', ['error' => $e->getMessage()]);
+            if (class_exists('Log')) {
+                Log::error('Traveloka API error', ['error' => $e->getMessage()]);
+            }
             return null;
         }
     }
     
-    public function getHotelDetails(string $hotelId)
+    public function getHotelDetails($hotelId)
     {
         try {
             $response = Http::timeout(30)->get($this->baseUrl . '/hotel/detail', [
@@ -48,7 +52,9 @@ class TravelokaApiService
             
             return null;
         } catch (\Exception $e) {
-            Log::error('Traveloka hotel detail error', ['error' => $e->getMessage()]);
+            if (class_exists('Log')) {
+                Log::error('Traveloka hotel detail error', ['error' => $e->getMessage()]);
+            }
             return null;
         }
     }

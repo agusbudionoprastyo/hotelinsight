@@ -18,7 +18,7 @@ class HotelDataAggregatorService
         $this->serpApiService = $serpApiService;
     }
     
-    public function aggregateHotelData(Hotel $hotel, string $checkIn, string $checkOut): array
+    public function aggregateHotelData(Hotel $hotel, $checkIn, $checkOut)
     {
         try {
             DB::beginTransaction();
@@ -49,9 +49,9 @@ class HotelDataAggregatorService
                     $this->saveHotelPrices($hotel, $otaSource, $data, $checkIn, $checkOut);
                     $this->saveHotelReviews($hotel, $otaSource, $data);
                     
-                    $aggregatedData['prices'] = array_merge($aggregatedData['prices'], $data['prices'] ?? []);
+                    $aggregatedData['prices'] = array_merge($aggregatedData['prices'], isset($data['prices']) ? $data['prices'] : []);
                     
-                    if ($data['rating']) {
+                    if (isset($data['rating']) && $data['rating']) {
                         $aggregatedData['overall_rating'] += $data['rating'];
                     }
                 }
@@ -70,27 +70,31 @@ class HotelDataAggregatorService
             
             DB::commit();
             
-            Log::info('Hotel data aggregated successfully', [
-                'hotel_id' => $hotel->id,
-                'hotel_name' => $hotel->name,
-                'total_prices' => count($aggregatedData['prices']),
-                'total_reviews' => count($aggregatedData['reviews'])
-            ]);
+            if (class_exists('Log')) {
+                Log::info('Hotel data aggregated successfully', [
+                    'hotel_id' => $hotel->id,
+                    'hotel_name' => $hotel->name,
+                    'total_prices' => count($aggregatedData['prices']),
+                    'total_reviews' => count($aggregatedData['reviews'])
+                ]);
+            }
             
             return $aggregatedData;
             
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to aggregate hotel data', [
-                'hotel_id' => $hotel->id,
-                'error' => $e->getMessage()
-            ]);
+            if (class_exists('Log')) {
+                Log::error('Failed to aggregate hotel data', [
+                    'hotel_id' => $hotel->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
             
             throw $e;
         }
     }
     
-    protected function getOrCreateOtaSource(string $otaName): ?OtaSource
+    protected function getOrCreateOtaSource($otaName)
     {
         $slug = str_replace(['.', ' '], ['-', '-'], strtolower($otaName));
         
@@ -104,7 +108,7 @@ class HotelDataAggregatorService
         );
     }
     
-    protected function saveHotelPrices(Hotel $hotel, OtaSource $otaSource, array $data, string $checkIn, string $checkOut): void
+    protected function saveHotelPrices(Hotel $hotel, OtaSource $otaSource, $data, $checkIn, $checkOut)
     {
         if (empty($data['prices'])) {
             return;
@@ -120,9 +124,9 @@ class HotelDataAggregatorService
                 ],
                 [
                     'price' => $priceData['price'],
-                    'currency' => $priceData['currency'] ?? 'IDR',
+                    'currency' => isset($priceData['currency']) ? $priceData['currency'] : 'IDR',
                     'room_type' => 'Standard',
-                    'booking_url' => $priceData['url'] ?? null,
+                    'booking_url' => isset($priceData['url']) ? $priceData['url'] : null,
                     'is_available' => true,
                     'last_updated' => now(),
                 ]
@@ -130,7 +134,7 @@ class HotelDataAggregatorService
         }
     }
     
-    protected function saveHotelReviews(Hotel $hotel, OtaSource $otaSource, array $data): void
+    protected function saveHotelReviews(Hotel $hotel, OtaSource $otaSource, $data)
     {
         if (empty($data['reviews'])) {
             return;
@@ -145,16 +149,16 @@ class HotelDataAggregatorService
                 ],
                 [
                     'rating' => $reviewData['rating'],
-                    'review_text' => $reviewData['snippet'] ?? 'Review from ' . $otaSource->name,
+                    'review_text' => isset($reviewData['snippet']) ? $reviewData['snippet'] : 'Review from ' . $otaSource->name,
                     'review_date' => now(),
-                    'review_url' => $reviewData['url'] ?? null,
+                    'review_url' => isset($reviewData['url']) ? $reviewData['url'] : null,
                     'is_verified' => false,
                 ]
             );
         }
     }
     
-    protected function saveGeneralReviews(Hotel $hotel, array $reviewsData): void
+    protected function saveGeneralReviews(Hotel $hotel, $reviewsData)
     {
         foreach ($reviewsData as $reviewData) {
             HotelReview::create([
@@ -164,20 +168,20 @@ class HotelDataAggregatorService
                 'rating' => $reviewData['rating'],
                 'review_text' => $reviewData['snippet'],
                 'review_date' => now(),
-                'review_url' => $reviewData['url'],
+                'review_url' => isset($reviewData['url']) ? $reviewData['url'] : null,
                 'is_verified' => false,
             ]);
         }
     }
     
-    protected function updateHotelRating(Hotel $hotel, float $rating): void
+    protected function updateHotelRating(Hotel $hotel, $rating)
     {
         if ($rating > 0) {
             $hotel->update(['rating' => $rating]);
         }
     }
     
-    public function getAggregatedHotelData(Hotel $hotel): array
+    public function getAggregatedHotelData(Hotel $hotel)
     {
         $prices = $hotel->prices()
             ->with('otaSource')
@@ -222,7 +226,7 @@ class HotelDataAggregatorService
                         'review_url' => $review->review_url,
                     ];
                 }),
-                'average_rating' => $otaReviews->avg('rating') ?? 0,
+                'average_rating' => $otaReviews->avg('rating') ?: 0,
                 'total_reviews' => $otaReviews->count(),
             ];
         }

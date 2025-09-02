@@ -17,33 +17,59 @@ class SerpApiService
         $this->baseUrl = config('services.serpapi.base_url');
     }
     
-    public function searchHotelPrices(string $hotelName, string $location, string $checkIn, string $checkOut)
+    public function searchHotelPrices($hotelName, $location, $checkIn, $checkOut)
     {
         $cacheKey = "hotel_prices_{$hotelName}_{$location}_{$checkIn}_{$checkOut}";
         
-        return Cache::remember($cacheKey, 3600, function () use ($hotelName, $location, $checkIn, $checkOut) {
-            $otaData = [];
-            
-            $otas = [
-                'booking.com' => 'booking.com',
-                'agoda' => 'agoda.com',
-                'expedia' => 'expedia.com',
-                'traveloka' => 'traveloka.com',
-                'tiket.com' => 'tiket.com'
-            ];
-            
-            foreach ($otas as $otaName => $otaDomain) {
-                $data = $this->searchOtaHotel($hotelName, $location, $otaDomain, $checkIn, $checkOut);
-                if ($data) {
-                    $otaData[$otaName] = $data;
+        try {
+            return Cache::remember($cacheKey, 3600, function () use ($hotelName, $location, $checkIn, $checkOut) {
+                $otaData = [];
+                
+                $otas = [
+                    'booking.com' => 'booking.com',
+                    'agoda' => 'agoda.com',
+                    'expedia' => 'expedia.com',
+                    'traveloka' => 'traveloka.com',
+                    'tiket.com' => 'tiket.com'
+                ];
+                
+                foreach ($otas as $otaName => $otaDomain) {
+                    $data = $this->searchOtaHotel($hotelName, $location, $otaDomain, $checkIn, $checkOut);
+                    if ($data) {
+                        $otaData[$otaName] = $data;
+                    }
                 }
-            }
-            
-            return $otaData;
-        });
+                
+                return $otaData;
+            });
+        } catch (\Exception $e) {
+            return $this->searchHotelPricesDirect($hotelName, $location, $checkIn, $checkOut);
+        }
     }
     
-    protected function searchOtaHotel(string $hotelName, string $location, string $otaDomain, string $checkIn, string $checkOut)
+    protected function searchHotelPricesDirect($hotelName, $location, $checkIn, $checkOut)
+    {
+        $otaData = [];
+        
+        $otas = [
+            'booking.com' => 'booking.com',
+            'agoda' => 'agoda.com',
+            'expedia' => 'expedia.com',
+            'traveloka' => 'traveloka.com',
+            'tiket.com' => 'tiket.com'
+        ];
+        
+        foreach ($otas as $otaName => $otaDomain) {
+            $data = $this->searchOtaHotel($hotelName, $location, $otaDomain, $checkIn, $checkOut);
+            if ($data) {
+                $otaData[$otaName] = $data;
+            }
+        }
+        
+        return $otaData;
+    }
+    
+    protected function searchOtaHotel($hotelName, $location, $otaDomain, $checkIn, $checkOut)
     {
         try {
             $query = "{$hotelName} {$location} hotel {$otaDomain} price {$checkIn} {$checkOut}";
@@ -62,19 +88,23 @@ class SerpApiService
                 return $this->parseOtaResults($data, $otaDomain);
             }
             
-            Log::warning("SerpAPI request failed for {$otaDomain}", [
-                'status' => $response->status(),
-                'response' => $response->body()
-            ]);
+            if (class_exists('Log')) {
+                Log::warning("SerpAPI request failed for {$otaDomain}", [
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+            }
             
             return null;
         } catch (\Exception $e) {
-            Log::error("SerpAPI error for {$otaDomain}", ['error' => $e->getMessage()]);
+            if (class_exists('Log')) {
+                Log::error("SerpAPI error for {$otaDomain}", ['error' => $e->getMessage()]);
+            }
             return null;
         }
     }
     
-    protected function parseOtaResults(array $data, string $otaDomain): array
+    protected function parseOtaResults($data, $otaDomain)
     {
         $results = [
             'ota_name' => $otaDomain,
@@ -87,8 +117,8 @@ class SerpApiService
         if (isset($data['organic_results'])) {
             foreach ($data['organic_results'] as $result) {
                 if (isset($result['title']) && isset($result['link'])) {
-                    $price = $this->extractPrice($result['title'], $result['snippet'] ?? '');
-                    $rating = $this->extractRating($result['title'], $result['snippet'] ?? '');
+                    $price = $this->extractPrice($result['title'], isset($result['snippet']) ? $result['snippet'] : '');
+                    $rating = $this->extractRating($result['title'], isset($result['snippet']) ? $result['snippet'] : '');
                     
                     if ($price) {
                         $results['prices'][] = [
@@ -103,7 +133,7 @@ class SerpApiService
                         $results['rating'] = $rating;
                     }
                     
-                    if (!$results['booking_url'] && str_contains($result['link'], $otaDomain)) {
+                    if (!$results['booking_url'] && strpos($result['link'], $otaDomain) !== false) {
                         $results['booking_url'] = $result['link'];
                     }
                 }
@@ -113,7 +143,7 @@ class SerpApiService
         return $results;
     }
     
-    protected function extractPrice(string $title, string $snippet): ?float
+    protected function extractPrice($title, $snippet)
     {
         $text = $title . ' ' . $snippet;
         
@@ -130,7 +160,7 @@ class SerpApiService
         return null;
     }
     
-    protected function extractRating(string $title, string $snippet): ?float
+    protected function extractRating($title, $snippet)
     {
         $text = $title . ' ' . $snippet;
         
@@ -145,37 +175,48 @@ class SerpApiService
         return null;
     }
     
-    public function searchHotelReviews(string $hotelName, string $location)
+    public function searchHotelReviews($hotelName, $location)
     {
-        $cacheKey = "hotel_reviews_{$hotelName}_{$location}";
-        
-        return Cache::remember($cacheKey, 7200, function () use ($hotelName, $location) {
-            try {
-                $query = "{$hotelName} {$location} hotel reviews ratings";
-                
-                $response = Http::timeout(30)->get($this->baseUrl, [
-                    'q' => $query,
-                    'api_key' => $this->apiKey,
-                    'engine' => 'google',
-                    'num' => 20,
-                    'gl' => 'id',
-                    'hl' => 'en'
-                ]);
-                
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $this->parseReviewResults($data);
-                }
-                
-                return null;
-            } catch (\Exception $e) {
-                Log::error('SerpAPI review search error', ['error' => $e->getMessage()]);
-                return null;
-            }
-        });
+        try {
+            $cacheKey = "hotel_reviews_{$hotelName}_{$location}";
+            
+            return Cache::remember($cacheKey, 7200, function () use ($hotelName, $location) {
+                return $this->searchHotelReviewsDirect($hotelName, $location);
+            });
+        } catch (\Exception $e) {
+            return $this->searchHotelReviewsDirect($hotelName, $location);
+        }
     }
     
-    protected function parseReviewResults(array $data): array
+    protected function searchHotelReviewsDirect($hotelName, $location)
+    {
+        try {
+            $query = "{$hotelName} {$location} hotel reviews ratings";
+            
+            $response = Http::timeout(30)->get($this->baseUrl, [
+                'q' => $query,
+                'api_key' => $this->apiKey,
+                'engine' => 'google',
+                'num' => 20,
+                'gl' => 'id',
+                'hl' => 'en'
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                return $this->parseReviewResults($data);
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            if (class_exists('Log')) {
+                Log::error('SerpAPI review search error', ['error' => $e->getMessage()]);
+            }
+            return null;
+        }
+    }
+    
+    protected function parseReviewResults($data)
     {
         $reviews = [];
         
@@ -189,7 +230,7 @@ class SerpApiService
                             'rating' => $rating,
                             'title' => $result['title'],
                             'snippet' => $result['snippet'],
-                            'url' => $result['link'] ?? null
+                            'url' => isset($result['link']) ? $result['link'] : null
                         ];
                     }
                 }
