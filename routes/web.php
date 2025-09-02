@@ -18,3 +18,13 @@ Route::post('/api/hotels/ensure/{placeId}', [HotelController::class, 'ensureHote
 
 // Search hotel by place_id
 Route::get('/hotels/search', [HotelController::class, 'searchByPlaceId'])->name('hotels.search');
+
+Route::get('/hotels', [HotelController::class, 'index'])->name('hotels.index');
+Route::get('/hotels/create', [HotelController::class, 'create'])->name('hotels.create');
+Route::post('/hotels', [HotelController::class, 'store'])->name('hotels.store');
+Route::get('/hotels/{hotel}', [HotelController::class, 'show'])->name('hotels.show');
+
+Route::post('/hotels/{hotel}/fetch-ota-data', [HotelController::class, 'fetchOtaData'])->name('hotels.fetch-ota-data');
+Route::get('/hotels/{hotel}/prices', [HotelController::class, 'getHotelPrices'])->name('hotels.prices');
+Route::get('/hotels/{hotel}/reviews', [HotelController::class, 'getHotelReviews'])->name('hotels.reviews');
+Route::post('/hotels/search', [HotelController::class, 'searchHotels'])->name('hotels.search');

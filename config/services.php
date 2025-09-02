@@ -41,4 +41,9 @@ return [
         'env' => env('AMADEUS_ENV', 'test'),
     ],
 
+    'serpapi' => [
+        'api_key' => env('SERPAPI_KEY', '4e8aa76b5aed65e0d0e558589264c1becb21e374464353cf70663289c19935b5'),
+        'base_url' => 'https://serpapi.com/search',
+    ],
+
 ];

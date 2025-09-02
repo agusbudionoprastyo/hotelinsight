@@ -53,6 +53,12 @@ class OtaSourceSeeder extends Seeder
                 'is_active' => true,
             ],
             [
+                'name' => 'Tiket.com',
+                'slug' => 'tiket-com',
+                'website_url' => 'https://www.tiket.com',
+                'is_active' => true,
+            ],
+            [
                 'name' => 'Pegipegi',
                 'slug' => 'pegipegi',
                 'website_url' => 'https://www.pegipegi.com',
